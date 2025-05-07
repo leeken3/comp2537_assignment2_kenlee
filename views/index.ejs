@@ -1,18 +1,33 @@
-<%- include("templates/header") %> 
+<%- include("templates/header") %>
+
+<div class="container mt-5">
     <% if (!username) { %>
-        <form action="/signup" method="get">
-            <button type="submit">Sign Up</button>
-        </form><br>
-        <form action="/login" method="get">
-            <button type="submit">Log In</button>
-        </form>
+        <div class="text-center">
+            <h2>Welcome to NBA Fan Members!</h2>
+            <p class="lead">Join our community to access exclusive content.</p>
+            <div class="d-flex justify-content-center gap-3">
+                <form action="/signup" method="get">
+                    <button type="submit" class="btn btn-success btn-lg">Sign Up</button>
+                </form>
+                <form action="/login" method="get">
+                    <button type="submit" class="btn btn-success btn-lg">Log In</button>
+                </form>
+            </div>
+        </div>
     <% } else { %>
-        <p>Hello, <%= username %>!</p>
-        <form action="/members" method="get">
-            <button type="submit">Go to Members Area</button>
-        </form>
-        <form action="/logout" method="get">
-            <button type="submit">Logout</button>
-        </form>
+        <div class="text-center">
+            <h2>Hello, <%= username %>!</h2>
+            <p class="lead">Welcome back to the members area.</p>
+            <div class="d-flex justify-content-center gap-3">
+                <form action="/members" method="get">
+                    <button type="submit" class="btn btn-success">Go to Members Area</button>
+                </form>
+                <form action="/logout" method="get">
+                    <button type="submit" class="btn btn-danger">Logout</button>
+                </form>
+            </div>
+        </div>
     <% } %>
-<%- include("templates/footer") %> 
+</div>
+
+<%- include("templates/footer") %>

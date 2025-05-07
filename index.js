@@ -44,9 +44,14 @@ app.use(session({
 }));
 
 app.get('/', (req, res) => {
-    const username = req.query.user;
-    res.render('index', { username });
+    const username = req.session.username;
+    if (!username) {
+        res.render('index', { username: null });
+    } else {
+        res.render('index', { username: username });
+    }
 });
+
 
 app.get('/nosql-injection', async (req, res) => {
     var username = req.query.user;
@@ -176,9 +181,8 @@ app.get('/members', (req, res) => {
     var username = req.session.username;
 
     var images = ['sga1.jpg', 'sga2.jpg', 'sga3.jpg'];
-    var randomImage = images[Math.floor(Math.random() * images.length)];
 
-    res.render('members', { username: username, randomImage: randomImage });
+    res.render('members', { username: username, images: images });
 });
 
 app.use(express.static(__dirname + "/public"));

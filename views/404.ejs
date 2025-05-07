@@ -1,5 +1,17 @@
-<%- include("templates/header") %> 
-    <h1>404</h1>
-    <p>Page not found.</p>
-    <a href="/">Return to home page</a>
-<%- include("templates/footer") %> 
+<%- include("templates/header") %>
+
+<div class="container text-center mt-5">
+    <h1 class="display-1 fw-bold">404</h1>
+    <p class="fs-3">😕 Oops! Page not found.</p>
+    <p class="lead mb-4">Looks like Shai’s dunk made it in — but this page didn’t.</p>
+
+    <div class="mb-4">
+        <img src="/shaigif.gif" alt="Shai Gilgeous-Alexander dunk" class="img-fluid rounded shadow" style="max-height: 400px;">
+    </div>
+
+    <a href="/" class="btn btn-success btn-lg">
+        Return to Home Page
+    </a>
+</div>
+
+<%- include("templates/footer") %>

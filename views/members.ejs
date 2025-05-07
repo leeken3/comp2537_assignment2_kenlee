@@ -1,5 +1,20 @@
-<%- include("templates/header") %> 
-    <p>Hello, <%= username %>.</p>
-    <img src="/<%= randomImage %>" alt="Random image" style="max-width:300px;"><br>
-    <button onclick="window.location.href='/logout'">Sign out</button>
-<%- include("templates/footer") %> 
+<%- include("templates/header") %>
+
+<div class="container mt-5 text-center">
+    <h2 class="mb-4">Hello, <%= username %>!</h2>
+    <p class="lead mb-4">Welcome to the NBA Fan Members area.</p>
+
+    <div class="row justify-content-center">
+        <% images.forEach(function(image) { %>
+            <div class="col-md-4 mb-4">
+                <div class="card shadow-sm">
+                    <img src="/<%= image %>" class="card-img-top img-fluid" alt="Shai Image" style="height: 400px; object-fit: cover;">
+                </div>
+            </div>
+        <% }) %>
+    </div>
+
+    <a href="/logout" class="btn btn-danger btn-lg">Sign Out</a>
+</div>
+
+<%- include("templates/footer") %>
