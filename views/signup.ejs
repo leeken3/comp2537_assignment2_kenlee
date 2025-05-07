@@ -1,0 +1,12 @@
+<%- include("templates/header") %>
+    <% if (typeof error !== 'undefined') { %>
+        <p style="color: red;"><%= error %></p>
+    <% } %>
+    <p>Create user</p>
+    <form action="/signupSubmit" method="post">
+        <input type="text" name="username" placeholder="Name" /><br>
+        <input type="email" name="email" placeholder="Email" /><br>
+        <input type="password" name="password" placeholder="Password" /><br>
+        <button type="submit">Submit</button>
+    </form>
+<%- include("templates/footer") %>

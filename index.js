@@ -21,17 +21,19 @@ const mongodb_session_secret = process.env.MONGODB_SESSION_SECRET;
 const node_session_secret = process.env.NODE_SESSION_SECRET;
 /* END secret section */
 
-const {database} = require('./databaseConnection');
+const { database } = require('./databaseConnection');
 
 const userCollection = database.db(mongodb_database).collection('users');
 
-app.use(express.urlencoded({extended: false}));
+app.set('view engine', 'ejs');
+
+app.use(express.urlencoded({ extended: false }));
 
 var mongoStore = MongoStore.create({
-	mongoUrl: `mongodb+srv://${mongodb_user}:${mongodb_password}@${mongodb_host}/${mongodb_database}`,
-	crypto: {
-		secret: mongodb_session_secret
-	}
+    mongoUrl: `mongodb+srv://${mongodb_user}:${mongodb_password}@${mongodb_host}/${mongodb_database}`,
+    crypto: {
+        secret: mongodb_session_secret
+    }
 })
 
 app.use(session({
@@ -42,77 +44,42 @@ app.use(session({
 }));
 
 app.get('/', (req, res) => {
-    var username = req.query.user;
-    if (!username) {
-        var html = `
-            <body>
-            <form action="/signup" method="get">
-                <button type="submit">Sign Up</button>
-            </form>
-            <form action="/login" method="get">
-                <button type="submit">Log In</button>
-            </form>
-            </body>
-        `;
-    } else {
-        var html = `
-            <body>
-            <p>Hello, ${username}!</p>
-            <form action="/members" method="get">
-                <button type="submit">Go to Members Area</button>
-            </form>
-            <form action="/logout" method="get">
-                <button type="submit">Logout</button>
-            </form>
-            </body>
-        `;
-    }
-    res.send(html);
+    const username = req.query.user;
+    res.render('index', { username });
 });
 
-app.get('/nosql-injection', async (req,res) => {
-	var username = req.query.user;
+app.get('/nosql-injection', async (req, res) => {
+    var username = req.query.user;
 
-	if (!username) {
-		res.send(`<h3>no user provided - try /nosql-injection?user=name</h3> <h3>or /nosql-injection?user[$ne]=name</h3>`);
-		return;
-	}
-	console.log("user: "+username);
+    if (!username) {
+        res.send(`<h3>no user provided - try /nosql-injection?user=name</h3> <h3>or /nosql-injection?user[$ne]=name</h3>`);
+        return;
+    }
+    console.log("user: " + username);
 
-	const schema = Joi.string().max(20).required();
-	const validationResult = schema.validate(username);
+    const schema = Joi.string().max(20).required();
+    const validationResult = schema.validate(username);
 
-	//If we didn't use Joi to validate and check for a valid URL parameter below
-	// we could run our userCollection.find and it would be possible to attack.
-	// A URL parameter of user[$ne]=name would get executed as a MongoDB command
-	// and may result in revealing information about all users or a successful
-	// login without knowing the correct password.
-	if (validationResult.error != null) {  
-	   console.log(validationResult.error);
-	   res.send("<h1 style='color:darkred;'>A NoSQL injection attack was detected!!</h1>");
-	   return;
-	}	
+    //If we didn't use Joi to validate and check for a valid URL parameter below
+    // we could run our userCollection.find and it would be possible to attack.
+    // A URL parameter of user[$ne]=name would get executed as a MongoDB command
+    // and may result in revealing information about all users or a successful
+    // login without knowing the correct password.
+    if (validationResult.error != null) {
+        console.log(validationResult.error);
+        res.send("<h1 style='color:darkred;'>A NoSQL injection attack was detected!!</h1>");
+        return;
+    }
 
-	const result = await userCollection.find({username: username}).project({username: 1, password: 1, _id: 1}).toArray();
+    const result = await userCollection.find({ username: username }).project({ username: 1, password: 1, _id: 1 }).toArray();
 
-	console.log(result);
+    console.log(result);
 
     res.send(`<h1>Hello ${username}</h1>`);
 });
 
 app.get('/signup', (req, res) => {
-    var html = `
-            <body>
-            <p>create user</p>
-            <form action="/signupSubmit" method="post">
-                <input type="text" name="username" placeholder="Name" /><br>
-                <input type="email" name="email" placeholder="Email" /><br>
-                <input type="password" name="password" placeholder="Password" /><br>
-                <button type="submit">Submit</button>
-            </form>
-        </body>
-    `;
-    res.send(html);
+    res.render('signup');
 });
 
 app.post('/signupSubmit', async (req, res) => {
@@ -121,88 +88,83 @@ app.post('/signupSubmit', async (req, res) => {
     var email = req.body.email;
 
     if (!username) {
-        res.send(`<p>Name is required.</p><a href="/signup">Try again</a>`);
+        res.render('signup', { error: 'Name is required.' });
     } else if (!email) {
-        res.send(`<p>Email is required.</p><a href="/signup">Try again</a>`);
+        res.render('signup', { error: 'Email is required.' });
     } else if (!password) {
-        res.send(`<p>Password is required.</p><a href="/signup">Try again</a>`);
+        res.render('signup', { error: 'Password is required.' });
     } else {
-        const schema = Joi.object(
-            {
-                username: Joi.string().alphanum().max(20).required(),
-                password: Joi.string().max(20).required(),
-                email: Joi.string().email().max(100).required()
-            });
-        
-        const validationResult = schema.validate({username, email, password});
+        const schema = Joi.object({
+            username: Joi.string().alphanum().max(20).required(),
+            password: Joi.string().max(20).required(),
+            email: Joi.string().email().max(100).required()
+        });
+
+        const validationResult = schema.validate({ username, email, password });
         if (validationResult.error != null) {
-           console.log(validationResult.error);
-           res.redirect("/signup");
-           return;
-       }
-    
+            console.log(validationResult.error);
+            res.render('signup', { error: 'Invalid input. Please follow the rules.' });
+            return;
+        }
+
         var hashedPassword = await bcrypt.hash(password, saltRounds);
-        
-        await userCollection.insertOne({username: username, email: email, password: hashedPassword});
-        console.log("Inserted user");
+
+        await userCollection.insertOne({ username: username, email: email, password: hashedPassword });
+        console.log('Inserted user');
 
         req.session.authenticated = true;
         req.session.username = username;
 
-        res.redirect("/members");
+        res.redirect('/members');
     }
 });
 
-app.get('/login', (req,res) => {
-    var html = `
-    log in
-    <form action='/loginSubmit' method='post'>
-    <input name='email' type='text' placeholder='email'><br>
-    <input name='password' type='password' placeholder='password'><br>
-    <button>Submit</button>
-    </form>
-    `;
-    res.send(html);
+app.get('/login', (req, res) => {
+    res.render('login');
 });
 
-app.post('/loginSubmit', async (req,res) => {
+app.post('/loginSubmit', async (req, res) => {
     var email = req.body.email;
     var password = req.body.password;
-    var username = req.body.username;
 
-	const schema = Joi.object({
+    const schema = Joi.object({
         email: Joi.string().email().max(100).required(),
         password: Joi.string().max(20).required()
     });
-	const validationResult = schema.validate({ email, password });
-	if (validationResult.error != null) {
-	   console.log(validationResult.error);
-	   res.redirect("/login");
-	   return;
-	}
 
-	const result = await userCollection.find({email: email}).project({username: 1, email: 1, password: 1, _id: 1}).toArray();
+    const validationResult = schema.validate({ email, password });
+    if (validationResult.error != null) {
+        console.log(validationResult.error);
+        res.render('login', { error: 'Invalid input. Please check your email and password.' });
+        return;
+    }
 
-	console.log(result);
-	if (result.length != 1) {
-		console.log("user not found");
-		res.send(`<p>Invalid email/password combination</p><a href="/login">Try again</a>`);
-		return;
-	}
-	if (await bcrypt.compare(password, result[0].password)) {
-		console.log("correct password");
-		req.session.authenticated = true;
-		req.session.username = result[0].username;
-		req.session.cookie.maxAge = expireTime;
+    const result = await userCollection
+        .find({ email: email })
+        .project({ username: 1, email: 1, password: 1, _id: 1 })
+        .toArray();
 
-		res.redirect('/members');
-		return;
-	}
-	else {
-		console.log("incorrect password");
-		res.send(`<p>Invalid email/password combination</p><a href="/login">Try again</a>`);
-		return;
-	}
+    console.log(result);
+
+    if (result.length != 1) {
+        console.log("user not found");
+        res.render('login', { error: 'Invalid email/password combination.' });
+        return;
+    }
+
+    if (await bcrypt.compare(password, result[0].password)) {
+        console.log("correct password");
+        req.session.authenticated = true;
+        req.session.username = result[0].username;
+        req.session.cookie.maxAge = expireTime;
+
+        res.redirect('/members');
+        return;
+    } else {
+        console.log("incorrect password");
+        res.render('login', { error: 'Invalid email/password combination.' });
+        return;
+    }
 });
 
 app.get('/members', (req, res) => {
@@ -216,13 +178,7 @@ app.get('/members', (req, res) => {
     var images = ['sga1.jpg', 'sga2.jpg', 'sga3.jpg'];
     var randomImage = images[Math.floor(Math.random() * images.length)];
 
-    var html = `
-    <p>Hello, ${username}.</p>
-    <img src="/${randomImage}" alt="Random image" style="max-width:300px;"><br>
-    <button onclick="window.location.href='/logout'">Sign out</button>
-    `;
-
-    res.send(html);
+    res.render('members', { username: username, randomImage: randomImage });
 });
 
 app.use(express.static(__dirname + "/public"));
@@ -231,15 +187,16 @@ app.get('/logout', (req, res) => {
     req.session.destroy(err => {
         if (err) {
             console.log('Error destroying session:', err);
-            res.status(500).send('Error logging out.');
+            res.status(500).render('error', { message: 'Error logging out.' });
         } else {
-            res.redirect('/');
+            res.render('logout');
         }
     });
 });
-app.get("*dummy", (req,res) => {
+
+app.get("*dummy", (req, res) => {
     res.status(404);
-    res.send("Page not found - 404");
+    res.render('404');
 });
 
 app.listen(port, () => {
