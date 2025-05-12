@@ -3,6 +3,7 @@ const express = require('express');
 const bcrypt = require('bcrypt');
 const MongoStore = require('connect-mongo');
 const session = require('express-session');
+const { ObjectId } = require('mongodb');
 const saltRounds = 12;
 
 const app = express();
@@ -114,11 +115,12 @@ app.post('/signupSubmit', async (req, res) => {
 
         var hashedPassword = await bcrypt.hash(password, saltRounds);
 
-        await userCollection.insertOne({ username: username, email: email, password: hashedPassword });
+        await userCollection.insertOne({ username: username, email: email, password: hashedPassword, type: 'user' });
         console.log('Inserted user');
 
         req.session.authenticated = true;
         req.session.username = username;
+        req.session.userType = 'user';
 
         res.redirect('/members');
     }
@@ -146,7 +148,7 @@ app.post('/loginSubmit', async (req, res) => {
 
     const result = await userCollection
         .find({ email: email })
-        .project({ username: 1, email: 1, password: 1, _id: 1 })
+        .project({ username: 1, email: 1, password: 1, _id: 1, type: 1 })
         .toArray();
 
     console.log(result);
@@ -162,6 +164,7 @@ app.post('/loginSubmit', async (req, res) => {
         req.session.authenticated = true;
         req.session.username = result[0].username;
         req.session.cookie.maxAge = expireTime;
+        req.session.userType = result[0].type || 'user';
 
         res.redirect('/members');
         return;
@@ -197,6 +200,67 @@ app.get('/logout', (req, res) => {
         }
     });
 });
+
+app.get('/admin', async (req, res) => {
+    // Check if the user is authenticated (Authentication code)
+    const authenticated = req.session.authenticated;
+
+    if (!authenticated) {
+        return res.redirect('/login');
+    }
+
+    // Check if the user is an admin (Authorization code)
+    const isAdmin = req.session.userType === 'admin';
+
+    if (!isAdmin) {
+        // Redirect or show a 403 error if they are authenticated but not an admin
+        return res.status(403).render('admin', { authorized: false });
+    }
+
+    // Fetch the list of users and render the admin page if the user is an admin
+    const users = await userCollection.find().toArray();
+    res.render('admin', { authorized: true, username: req.session.username, users: users });
+});
+
+app.get('/promote/:id', async (req, res) => {
+    if (req.session.userType !== 'admin') {
+        res.status(403).render('error', { message: 'Unauthorized action.' });
+        return;
+    }
+
+    // Ensure that the user exists before promoting
+    const userToPromote = await userCollection.findOne({ _id: new ObjectId(req.params.id) });
+    if (!userToPromote) {
+        return res.status(404).render('error', { message: 'User not found.' });
+    }
+
+    await userCollection.updateOne(
+        { _id: new ObjectId(req.params.id) },
+        { $set: { type: 'admin' } }
+    );
+    res.redirect('/admin');
+});
+
+app.get('/demote/:id', async (req, res) => {
+    if (req.session.userType !== 'admin') {
+        res.status(403).render('error', { message: 'Unauthorized action.' });
+        return;
+    }
+
+    // Ensure that the user exists before demoting
+    const userToDemote = await userCollection.findOne({ _id: new ObjectId(req.params.id) });
+    if (!userToDemote) {
+        return res.status(404).render('error', { message: 'User not found.' });
+    }
+
+    await userCollection.updateOne(
+        { _id: new ObjectId(req.params.id) },
+        { $set: { type: 'user' } }
+    );
+    res.redirect('/admin');
+});
+
+
 
 app.get("*dummy", (req, res) => {
     res.status(404);

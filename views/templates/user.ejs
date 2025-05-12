@@ -1,0 +1,19 @@
+<table class="table table-bordered text-center">
+    <thead class="thead-light">
+        <tr>
+            <th>Users</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        <% users.forEach(function(user) { %>
+            <tr>
+                <td><%= user.username %> (<%= user.type || 'user' %>)</td>
+                <td>
+                    <a href="/promote/<%= user._id %>" class="btn btn-danger btn-sm mx-1">Promote to Admin</a>
+                    <a href="/demote/<%= user._id %>" class="btn btn-success btn-sm mx-1">Demote to User</a>
+                </td>
+            </tr>
+        <% }); %>
+    </tbody>
+</table>
